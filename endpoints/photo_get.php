@@ -1,11 +1,38 @@
 <?php
+
+  function photo_data($post) {
+    $post_meta = get_post_meta($post->ID);
+    $src = wp_get_attachment_image_src($post_meta['img'][0], 'large')[0];
+    $user = get_userdata($post->post_author);
+    $total_comments = get_comments_number($post->ID);
+
+    return [
+      'id' => $post->ID,
+      'author'=> $user->user_login,
+      'title' => $post->post_title,
+      'date' => $post->post_date,
+      'src' => $src,
+      'descricao' => $post->post_content,
+      'acessos' => $post_meta['acessos'][0],
+      'total_comments' => $total_comments
+    ];
+  }
  
  function api_photo_get($request) {
     $post_id = $request['id'];
     $post = get_post( $post_id );
-    
 
-   return rest_ensure_response($post);
+    if(!isset($post) || empty($post_id)) {
+      $response = new WP_Error('error', 'Post não encontrado', ['status' => 404]);
+      return rest_ensure_response($response);
+    }
+    
+    $photo = photo_data($post);
+
+    $photo['acessos'] = (int) $photo['acessos'] + 1;
+    update_post_meta($post->ID, 'acessos', $photo['acessos']);
+
+   return rest_ensure_response($photo);
  }
 
  function register_api_photo_get() {
